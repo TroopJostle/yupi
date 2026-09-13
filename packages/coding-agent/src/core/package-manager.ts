@@ -2396,9 +2396,10 @@ export class DefaultPackageManager implements PackageManager {
 		};
 		const userAgentsSkillsDir = join(getHomeDir(), ".agents", "skills");
 		const projectTrusted = this.settingsManager.isProjectTrusted();
-		const projectAgentsSkillDirs = projectTrusted
-			? collectAncestorAgentsSkillDirs(this.cwd).filter((dir) => resolve(dir) !== resolve(userAgentsSkillsDir))
-			: [];
+		const projectAgentsSkillDirs =
+			projectTrusted && CONFIG_DIR_NAME === ".pi"
+				? collectAncestorAgentsSkillDirs(this.cwd).filter((dir) => resolve(dir) !== resolve(userAgentsSkillsDir))
+				: [];
 
 		const addResources = (
 			resourceType: ResourceType,
@@ -2493,7 +2494,7 @@ export class DefaultPackageManager implements PackageManager {
 		};
 		addResources(
 			"skills",
-			collectAutoSkillEntries(userAgentsSkillsDir, "agents"),
+			CONFIG_DIR_NAME === ".pi" ? collectAutoSkillEntries(userAgentsSkillsDir, "agents") : [],
 			userAgentsMetadata,
 			userOverrides.skills,
 			userAgentsBaseDir,
