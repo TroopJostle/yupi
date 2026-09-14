@@ -34,6 +34,7 @@ export function createInteractiveTui(options: InteractiveTuiOptions): TuiMainScr
 			openUrl: openBrowser,
 			onRightClickPaste: options.onRightClickPaste,
 			copyOnSelect: options.fullscreenCopyOnSelect,
+			background: (text) => theme.bg("customMessageBg", text),
 			copySelection: async (text) => {
 				try {
 					await copyToClipboard(text);

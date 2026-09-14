@@ -445,41 +445,6 @@ function collectAutoSkillEntries(dir: string, mode: SkillDiscoveryMode): string[
 	return collectSkillEntries(dir, mode);
 }
 
-function findGitRepoRoot(startDir: string): string | null {
-	let dir = resolve(startDir);
-	while (true) {
-		if (existsSync(join(dir, ".git"))) {
-			return dir;
-		}
-		const parent = dirname(dir);
-		if (parent === dir) {
-			return null;
-		}
-		dir = parent;
-	}
-}
-
-function collectAncestorAgentsSkillDirs(startDir: string): string[] {
-	const skillDirs: string[] = [];
-	const resolvedStartDir = resolve(startDir);
-	const gitRepoRoot = findGitRepoRoot(resolvedStartDir);
-
-	let dir = resolvedStartDir;
-	while (true) {
-		skillDirs.push(join(dir, ".agents", "skills"));
-		if (gitRepoRoot && dir === gitRepoRoot) {
-			break;
-		}
-		const parent = dirname(dir);
-		if (parent === dir) {
-			break;
-		}
-		dir = parent;
-	}
-
-	return skillDirs;
-}
-
 function collectAutoPromptEntries(dir: string): string[] {
 	const entries: string[] = [];
 	if (!existsSync(dir)) return entries;
@@ -2394,11 +2359,7 @@ export class DefaultPackageManager implements PackageManager {
 			prompts: join(projectBaseDir, "prompts"),
 			themes: join(projectBaseDir, "themes"),
 		};
-		const userAgentsSkillsDir = join(getHomeDir(), ".agents", "skills");
 		const projectTrusted = this.settingsManager.isProjectTrusted();
-		const projectAgentsSkillDirs = projectTrusted
-			? collectAncestorAgentsSkillDirs(this.cwd).filter((dir) => resolve(dir) !== resolve(userAgentsSkillsDir))
-			: [];
 
 		const addResources = (
 			resourceType: ResourceType,
@@ -2431,22 +2392,6 @@ export class DefaultPackageManager implements PackageManager {
 				projectMetadata,
 				projectOverrides.skills,
 				projectBaseDir,
-			);
-		}
-
-		// Project skills from .agents/ (each with its own baseDir)
-		for (const agentsSkillsDir of projectAgentsSkillDirs) {
-			const agentsBaseDir = dirname(agentsSkillsDir); // the .agents directory
-			const agentsMetadata: PathMetadata = {
-				...projectMetadata,
-				baseDir: agentsBaseDir,
-			};
-			addResources(
-				"skills",
-				collectAutoSkillEntries(agentsSkillsDir, "agents"),
-				agentsMetadata,
-				projectOverrides.skills,
-				agentsBaseDir,
 			);
 		}
 
@@ -2483,20 +2428,6 @@ export class DefaultPackageManager implements PackageManager {
 			userMetadata,
 			userOverrides.skills,
 			globalBaseDir,
-		);
-
-		// User skills from ~/.agents/ (with its own baseDir)
-		const userAgentsBaseDir = dirname(userAgentsSkillsDir);
-		const userAgentsMetadata: PathMetadata = {
-			...userMetadata,
-			baseDir: userAgentsBaseDir,
-		};
-		addResources(
-			"skills",
-			collectAutoSkillEntries(userAgentsSkillsDir, "agents"),
-			userAgentsMetadata,
-			userOverrides.skills,
-			userAgentsBaseDir,
 		);
 
 		addResources(

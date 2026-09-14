@@ -110,7 +110,6 @@ import { killTrackedDetachedChildren } from "../../utils/shell.ts";
 import { loadAllHighlightLanguages } from "../../utils/syntax-highlight.ts";
 import { ensureTool, type ToolStatus } from "../../utils/tools-manager.ts";
 import { checkForNewPiVersion, type LatestPiRelease } from "../../utils/version-check.ts";
-import { createChatViewport } from "./chat-viewport.ts";
 import { ArminComponent } from "./components/armin.ts";
 import { AssistantMessageComponent } from "./components/assistant-message.ts";
 import { BashExecutionComponent } from "./components/bash-execution.ts";
@@ -154,6 +153,7 @@ import { TrustSelectorComponent } from "./components/trust-selector.ts";
 import { UserMessageComponent } from "./components/user-message.ts";
 import { UserMessageSelectorComponent } from "./components/user-message-selector.ts";
 import { editInExternalEditor } from "./external-editor.ts";
+import { createFullscreenShell, type FullscreenShellState } from "./fullscreen-shell.ts";
 import { refreshModelCatalogs } from "./model-catalog-refresh.ts";
 import { getModelSearchText } from "./model-search.ts";
 import { shareSession } from "./session-share.ts";
@@ -492,6 +492,7 @@ export class InteractiveMode {
 
 	// Built-in header (logo + keybinding hints + changelog)
 	private builtInHeader: Component | undefined = undefined;
+	private builtInHeaderVisible = false;
 
 	// Custom header from extension (undefined = use built-in header)
 	private customHeader: (Component & { dispose?(): void }) | undefined = undefined;
@@ -831,6 +832,7 @@ export class InteractiveMode {
 		}
 		this.renderer = nextUi;
 		this.options.tuiMode = mode;
+		this.refreshHeaderContainer();
 		this.mountInteractiveTui(nextUi, components);
 		nextUi.invalidate();
 		nextUi.setFocus(focus);
@@ -873,7 +875,7 @@ export class InteractiveMode {
 
 		// Keep one component tree and remount it when changing renderers.
 		this.renderWidgets(); // Initialize with default spacer
-		const viewport = createChatViewport({
+		const fullscreenShell = createFullscreenShell({
 			document: this.documentContainer,
 			pendingMessages: this.pendingMessagesContainer,
 			status: this.statusContainer,
@@ -884,9 +886,11 @@ export class InteractiveMode {
 			scrollbar: this.settingsManager.getFullscreenScrollbar(),
 			scrollbarTrackStyle: (text) => theme.fg("scrollbarTrack", text),
 			scrollbarThumbStyle: (text) => theme.fg("scrollbarThumb", text),
+			getState: () => this.getFullscreenShellState(),
+			showWelcome: () => !this.settingsManager.getQuietStartup() || !!this.options.verbose,
 		});
-		this.transcriptScrollView = viewport.transcript;
-		this.fullscreenLayoutRoot = viewport.root;
+		this.transcriptScrollView = fullscreenShell.transcript;
+		this.fullscreenLayoutRoot = fullscreenShell.root;
 		this.mountInteractiveTui(this.renderer, [
 			this.documentContainer,
 			this.pendingMessagesContainer,
@@ -958,16 +962,12 @@ export class InteractiveMode {
 				1,
 				0,
 			);
-
-			// Setup UI layout
-			this.headerContainer.addChild(new Spacer(1));
-			this.headerContainer.addChild(this.builtInHeader);
-			this.headerContainer.addChild(new Spacer(1));
+			this.builtInHeaderVisible = true;
 		} else {
 			// Minimal header when silenced
 			this.builtInHeader = new Text("", 0, 0);
-			this.headerContainer.addChild(this.builtInHeader);
 		}
+		this.refreshHeaderContainer();
 		this.ui.requestRender();
 
 		// Ensure fd and rg are available after mounting the TUI (downloads if missing, adds to PATH via getBinDir)
@@ -2335,6 +2335,39 @@ export class InteractiveMode {
 		this.ui.requestRender();
 	}
 
+	private getFullscreenShellState(): FullscreenShellState {
+		const model = this.session.model;
+		const contextUsage = this.session.getContextUsage();
+		return {
+			cwd: this.sessionManager.getCwd(),
+			sessionName: this.sessionManager.getSessionName(),
+			model: model?.name || model?.id,
+			provider: model?.provider,
+			thinkingLevel: this.session.thinkingLevel,
+			contextPercent: contextUsage?.percent ?? null,
+			contextTokens: contextUsage?.tokens ?? null,
+			contextWindow: contextUsage?.contextWindow,
+			isWorking: this.session.isStreaming || this.session.isCompacting || this.session.isBashRunning,
+			hasMessages: this.session.messages.length > 0,
+			branch: this.footerDataProvider.getGitBranch(),
+		};
+	}
+
+	private refreshHeaderContainer(): void {
+		this.headerContainer.clear();
+		const header = this.customHeader ?? (this.renderer.mode === "regular" ? this.builtInHeader : undefined);
+		if (!header) {
+			return;
+		}
+		if (!this.customHeader && !this.builtInHeaderVisible) {
+			this.headerContainer.addChild(header);
+			return;
+		}
+		this.headerContainer.addChild(new Spacer(1));
+		this.headerContainer.addChild(header);
+		this.headerContainer.addChild(new Spacer(1));
+	}
+
 	/**
 	 * Set a custom header component, or restore the built-in header.
 	 */
@@ -2349,33 +2382,19 @@ export class InteractiveMode {
 			this.customHeader.dispose();
 		}
 
-		// Find the index of the current header in the header container
-		const currentHeader = this.customHeader || this.builtInHeader;
-		const index = this.headerContainer.children.indexOf(currentHeader);
-
 		if (factory) {
-			// Create and add custom header
 			this.customHeader = factory(this.ui, theme);
 			if (isExpandable(this.customHeader)) {
 				this.customHeader.setExpanded(this.toolOutputExpanded);
 			}
-			if (index !== -1) {
-				this.headerContainer.children[index] = this.customHeader;
-			} else {
-				// If not found (e.g. builtInHeader was never added), add at the top
-				this.headerContainer.children.unshift(this.customHeader);
-			}
 		} else {
-			// Restore built-in header
 			this.customHeader = undefined;
 			if (isExpandable(this.builtInHeader)) {
 				this.builtInHeader.setExpanded(this.toolOutputExpanded);
 			}
-			if (index !== -1) {
-				this.headerContainer.children[index] = this.builtInHeader;
-			}
 		}
 
+		this.refreshHeaderContainer();
 		this.ui.requestRender();
 	}
 

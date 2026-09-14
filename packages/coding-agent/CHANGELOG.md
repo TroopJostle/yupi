@@ -9,6 +9,7 @@
 
 ### Changed
 
+- Made fullscreen the default, with a compact header, responsive session sidebar, fixed composer, and a charcoal/violet dark palette. Regular mode remains available through `--tui-mode regular` and `/settings`.
 - Moved compaction, branch summarization, and retry spinners into the editor border alongside the working indicator. Custom editors use the same embedding opt-in for all status spinners.
 - Enabled strict-prefer JSON-schema sampling by default for built-in `read`, `bash`, `powershell`, `edit`, and `write` tools, without requiring `PI_EXPERIMENTAL`. Extensions can re-register tool definitions with `constrainedSampling: false`.
 

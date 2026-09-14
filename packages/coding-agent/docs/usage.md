@@ -6,9 +6,12 @@ This page collects day-to-day usage details that do not fit on the quickstart pa
 
 <p align="center"><img src="images/interactive-mode.png" alt="Interactive Mode" width="600"></p>
 
-The interface has four main areas:
+Fullscreen is the default. Use `--tui-mode regular` for terminal-owned scrollback, or choose **TUI mode** in `/settings`.
 
-- **Startup header** - shortcuts, loaded context files, prompt templates, skills, and extensions
+The interface has five main areas:
+
+- **Header and sidebar** - project, activity, session, model, and context information. The sidebar hides below 110 columns or 24 rows.
+- **Startup information** - loaded context files, prompt templates, skills, and extensions. Regular mode also shows the original shortcut banner.
 - **Messages** - user messages, assistant responses, tool calls, tool results, notifications, errors, and extension UI
 - **Editor** - where you type; border color indicates the current thinking level
 - **Footer** - working directory, session name, token/cache usage, cost, context usage, and current model. Totals include assistant responses, usage reported by tools, and summary generation.
@@ -242,7 +245,7 @@ pi --no-extensions -e ./my-extension.ts
 |--------|-------------|
 | `--system-prompt <text>` | Replace default prompt; context files and skills are still appended |
 | `--append-system-prompt <text>` | Append to system prompt |
-| `--tui-mode <mode>` | TUI mode: `regular` (default) or experimental `fullscreen` |
+| `--tui-mode <mode>` | TUI mode: `fullscreen` (default) or `regular` |
 | `--use-theme <name[/name]>` | Set the initial interactive theme for this run without changing settings |
 | `--verbose` | Force verbose startup |
 | `-a`, `--approve` | Trust project-local files for this run |

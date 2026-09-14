@@ -1,5 +1,6 @@
 import assert from "node:assert";
 import { describe, it } from "node:test";
+import type { Terminal as XtermTerminalType } from "@xterm/headless";
 import {
 	AltScreenSearchComponent,
 	AltScreenSearchIndex,
@@ -26,6 +27,15 @@ import { stripTerminalSequences, visibleWidth } from "../src/utils.ts";
 import { VirtualTerminal } from "./virtual-terminal.ts";
 
 const OSC133_ZONE_START = "\x1b]133;A\x07";
+
+function getCell(terminal: VirtualTerminal, row: number, col: number) {
+	const xterm = (terminal as unknown as { xterm: XtermTerminalType }).xterm;
+	const line = xterm.buffer.active.getLine(xterm.buffer.active.viewportY + row);
+	assert.ok(line, `Missing buffer line at row ${row}`);
+	const cell = line.getCell(col);
+	assert.ok(cell, `Missing cell at row ${row} col ${col}`);
+	return cell;
+}
 
 class InputOverlay {
 	focused = false;
@@ -62,6 +72,49 @@ class RecordingTerminal extends VirtualTerminal {
 }
 
 describe("TuiAltScreen", () => {
+	it("applies the configured background to every non-image viewport row", async () => {
+		const terminal = new RecordingTerminal(8, 2);
+		const tui = new TuiAltScreen(terminal, undefined, undefined, {
+			background: (text) => `\x1b[48;2;1;2;3m${text}\x1b[49m`,
+		});
+		tui.addChild(new Text("content", 0, 0));
+		tui.start();
+		await terminal.waitForRender();
+
+		const output = terminal.events
+			.filter((event): event is { type: "write"; data: string } => event.type === "write")
+			.map((event) => event.data)
+			.join("");
+		assert.ok(output.includes("\x1b[48;2;1;2;3mcontent \x1b[49m"));
+		assert.ok(output.includes("\x1b[48;2;1;2;3m        \x1b[49m"));
+		tui.stop();
+	});
+
+	it("restores the canvas background after nested component resets and terminal resize", async () => {
+		const canvas = (text: string) => `\x1b[48;2;1;2;3m${text}\x1b[49m`;
+		const terminal = new RecordingTerminal(24, 2);
+		const tui = new TuiAltScreen(terminal, undefined, undefined, { background: canvas });
+		tui.addChild(new Text(`a \x1b[48;2;255;0;0mRED\x1b[49m b \x1b[38;2;0;49;255mfg\x1b[0m reset`, 0, 0));
+		tui.start();
+		await terminal.waitForRender();
+
+		const red = getCell(terminal, 0, 2);
+		assert.strictEqual(red.isBgRGB(), true);
+		assert.strictEqual(red.getBgColor(), 0xff0000);
+		for (const column of [5, 8, 11]) {
+			const cell = getCell(terminal, 0, column);
+			assert.strictEqual(cell.isBgRGB(), true);
+			assert.strictEqual(cell.getBgColor(), 0x010203);
+		}
+
+		terminal.resize(32, 2);
+		await terminal.waitForRender();
+		const blankCell = getCell(terminal, 1, 31);
+		assert.strictEqual(blankCell.isBgRGB(), true);
+		assert.strictEqual(blankCell.getBgColor(), 0x010203);
+		tui.stop();
+	});
+
 	it("renders a terminal-height viewport and preserves manual scroll position", async () => {
 		const terminal = new VirtualTerminal(20, 4);
 		const tui = new TuiAltScreen(terminal);

@@ -48,6 +48,10 @@ class RecordingTerminal extends VirtualTerminal implements Terminal {
 }
 
 describe("createInteractiveTui", () => {
+	beforeEach(() => {
+		initTheme("dark");
+	});
+
 	it("selects the alternate-screen renderer only when requested", async () => {
 		const mainTerminal = new RecordingTerminal();
 		const mainTui = createInteractiveTui({
@@ -76,6 +80,23 @@ describe("createInteractiveTui", () => {
 		await altTerminal.waitForRender();
 		expect(altTerminal.writes.some((write) => write.includes("\x1b[?1049h"))).toBe(true);
 		altTui.stop();
+	});
+
+	it("styles fullscreen viewport rows with the interactive message background", async () => {
+		const terminal = new RecordingTerminal(20, 2);
+		const ui = createInteractiveTui({
+			tuiMode: "fullscreen",
+			showHardwareCursor: false,
+			logDirectory: "/tmp",
+			terminal,
+		});
+		ui.addChild(new Text("content", 0, 0));
+		ui.start();
+		await terminal.waitForRender();
+
+		const output = terminal.writes.join("");
+		expect(output).toMatch(/\x1b\[48;2;\d+;\d+;\d+mcontent/);
+		ui.stop();
 	});
 
 	it("shows the configured jump-to-bottom shortcut while scrolled up", async () => {
@@ -130,6 +151,7 @@ describe("createInteractiveTui", () => {
 			renderer: ReturnType<typeof createInteractiveTui>;
 			ui: TUI;
 			fullscreenLayoutRoot: Component;
+			headerContainer: Container;
 			options: { tuiMode?: TuiMode };
 			themeController: { rebindTui: () => void };
 			extensionTerminalInputSubscriptions: Set<never>;
@@ -139,6 +161,7 @@ describe("createInteractiveTui", () => {
 			renderer,
 			ui: undefined as unknown as TUI,
 			fullscreenLayoutRoot: component,
+			headerContainer: new Container(),
 			options: { tuiMode: "regular" as TuiMode },
 			themeController: { rebindTui: () => {} },
 			extensionTerminalInputSubscriptions: new Set<never>(),
@@ -166,6 +189,55 @@ describe("createInteractiveTui", () => {
 
 		expect(stableUi.mode).toBe("fullscreen");
 		expect([terminal.startCount, terminal.stopCount]).toEqual([2, 2]);
+	});
+});
+
+describe("InteractiveMode startup header", () => {
+	it("keeps quiet regular startup header spacing minimal", () => {
+		const builtInHeader = new Text("", 0, 0);
+		const headerContainer = new Container();
+		const context = {
+			headerContainer,
+			customHeader: undefined,
+			builtInHeader,
+			renderer: { mode: "regular" as const },
+		};
+		const refreshHeaderContainer = (
+			InteractiveMode.prototype as unknown as {
+				refreshHeaderContainer(this: typeof context): void;
+			}
+		).refreshHeaderContainer;
+
+		refreshHeaderContainer.call(context);
+
+		expect(headerContainer.children).toEqual([builtInHeader]);
+	});
+});
+
+describe("InteractiveMode fullscreen shell state", () => {
+	it("reports a running Bash command as working", () => {
+		const context = {
+			session: {
+				model: undefined,
+				getContextUsage: () => undefined,
+				isStreaming: false,
+				isCompacting: false,
+				isBashRunning: true,
+				messages: [],
+			},
+			sessionManager: {
+				getCwd: () => "/project",
+				getSessionName: () => undefined,
+			},
+			footerDataProvider: { getGitBranch: () => null },
+		};
+		const getFullscreenShellState = (
+			InteractiveMode.prototype as unknown as {
+				getFullscreenShellState(this: typeof context): { isWorking: boolean };
+			}
+		).getFullscreenShellState;
+
+		expect(getFullscreenShellState.call(context).isWorking).toBe(true);
 	});
 });
 

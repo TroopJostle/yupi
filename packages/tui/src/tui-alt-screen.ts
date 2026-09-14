@@ -48,7 +48,9 @@ import {
 	type ViewportTUI,
 } from "./tui.ts";
 import {
+	applyBackgroundToLine,
 	extractAnsiCode,
+	getActiveBackgroundAnsi,
 	getGraphemeCellRange,
 	getOsc8LinkAtColumn,
 	getWordSegmenter,
@@ -81,6 +83,72 @@ const DOUBLE_CLICK_INTERVAL_MS = 500;
 // so mirror common terminal word-selection behavior by keeping paths and kebab-case tokens whole.
 const TERMINAL_WORD_SELECTION_JOINERS = new Set(["/", "-"]);
 const wordSegmenter = getWordSegmenter();
+
+function getCanvasBackgroundFallback(background: (text: string) => string): string {
+	const sample = applyBackgroundToLine("", 1, background);
+	let index = 0;
+	while (index < sample.length) {
+		const ansi = extractAnsiCode(sample, index);
+		if (!ansi) break;
+		index += ansi.length;
+	}
+	return getActiveBackgroundAnsi(sample.slice(0, index));
+}
+
+function resetsBackgroundToDefault(code: string): boolean {
+	if (!code.startsWith("\x1b[") || !code.endsWith("m")) return false;
+
+	let resetsBackground = false;
+	const parameters = code.slice(2, -1).split(";");
+	for (let index = 0; index < parameters.length; index++) {
+		const parameter = parameters[index];
+		if (parameter === "38" || parameter === "48" || parameter === "58") {
+			const colorMode = parameters[index + 1];
+			if (colorMode === "5") {
+				if (parameter === "48") resetsBackground = false;
+				index += 2;
+				continue;
+			}
+			if (colorMode === "2") {
+				if (parameter === "48") resetsBackground = false;
+				index += 4;
+				continue;
+			}
+			if (parameter === "48") resetsBackground = false;
+			continue;
+		}
+		if (parameter.startsWith("48:")) {
+			resetsBackground = false;
+			continue;
+		}
+		if (parameter.startsWith("38:") || parameter.startsWith("58:")) continue;
+		if (parameter === "" || parameter === "0" || parameter === "49") {
+			resetsBackground = true;
+		} else if (/^(4[0-7]|10[0-7])$/.test(parameter)) {
+			resetsBackground = false;
+		}
+	}
+	return resetsBackground;
+}
+
+function restoreCanvasBackgroundAfterResets(line: string, fallbackBackground: string): string {
+	if (!fallbackBackground) return line;
+
+	let result = "";
+	let index = 0;
+	while (index < line.length) {
+		const ansi = extractAnsiCode(line, index);
+		if (!ansi) {
+			result += line[index];
+			index += 1;
+			continue;
+		}
+		result += ansi.code;
+		if (resetsBackgroundToDefault(ansi.code)) result += fallbackBackground;
+		index += ansi.length;
+	}
+	return result;
+}
 
 interface CachedKittyImage {
 	transmissionGeneration: number;
@@ -163,6 +231,8 @@ interface SearchHighlightRange {
 }
 
 export interface TuiAltScreenOptions {
+	/** Apply a background style to each non-image viewport row. */
+	background?: (text: string) => string;
 	/** Number of logical lines moved for each mouse-wheel event. */
 	wheelScrollLines?: number;
 	/** Capture mouse events for viewport scrolling and application-owned text selection. */
@@ -244,6 +314,7 @@ export class TuiAltScreen extends TuiBase implements ViewportTUI {
 	private readonly onRightClickPaste?: () => void;
 	private copyOnSelect: boolean;
 	private readonly copySelection?: (text: string) => Promise<boolean>;
+	private readonly background?: (text: string) => string;
 
 	constructor(
 		terminal: Terminal,
@@ -271,6 +342,7 @@ export class TuiAltScreen extends TuiBase implements ViewportTUI {
 		this.onRightClickPaste = options.onRightClickPaste;
 		this.copyOnSelect = options.copyOnSelect ?? true;
 		this.copySelection = options.copySelection;
+		this.background = options.background;
 		this.addInputListener((data) => this.handleViewportInput(data));
 	}
 
@@ -1659,6 +1731,15 @@ export class TuiAltScreen extends TuiBase implements ViewportTUI {
 			nextLayout = renderLayoutFrame(root, width, height, () => this.requestRender());
 		}
 		let screen = nextLayout.lines.map((line) => line.replace(OSC133_ZONE_PREFIX, ""));
+		const background = this.background;
+		if (background) {
+			const fallbackBackground = getCanvasBackgroundFallback(background);
+			screen = screen.map((line) =>
+				isImageLine(line)
+					? line
+					: applyBackgroundToLine(restoreCanvasBackgroundAfterResets(line, fallbackBackground), width, background),
+			);
+		}
 		screen = this.applySearchHighlights(screen, nextLayout);
 		screen = this.compositeScrollToEndIndicator(screen, nextLayout, width);
 		screen = this.compositeOverlays(screen, width, height);
