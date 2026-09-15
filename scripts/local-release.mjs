@@ -29,7 +29,7 @@ Options:
   --out <dir>          Output directory. Defaults to a new directory under ${tmpdir()}
   --force              Remove --out first if it already exists
   --skip-check         Do not run npm run check before building
-  --skip-test          Do not run ./test.sh before building
+  --skip-test          Do not run ./scripts/test.sh before building
   --skip-install       Only create tarballs; do not create isolated installs
   --skip-bun-install   Do not create the isolated Bun install
   --help               Show this help
@@ -210,7 +210,7 @@ for (const pkg of packages) {
 }
 
 if (!options.skipTest) {
-	run("./test.sh", [], { cwd: repoRoot });
+	run("./scripts/test.sh", [], { cwd: repoRoot });
 }
 
 const tarballs = packReleasePackages(packages, tarballDirectory);

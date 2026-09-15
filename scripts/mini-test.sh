@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-MINI_SRC="$SCRIPT_DIR/packages/coding-agent/src/experimental/mini/main.ts"
-MINI_DIST="$SCRIPT_DIR/packages/coding-agent/dist/experimental/mini/main.js"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+MINI_SRC="$REPO_ROOT/packages/coding-agent/src/experimental/mini/main.ts"
+MINI_DIST="$REPO_ROOT/packages/coding-agent/dist/experimental/mini/main.js"
 
 # The session server is spawned detached and outlives the TUI, so it keeps running whatever code it
 # started with. Restart it after changing anything under mini/, or the protocol will not match.
@@ -21,14 +21,14 @@ for arg in "$@"; do
     --stop) stop_server; echo "Stopped the mini session server."; exit 0 ;;
     --help)
       cat <<'USAGE'
-Usage: ./mini-test.sh [--dist] [--fresh] [--stop] [mini args...]
+Usage: ./scripts/mini-test.sh [--dist] [--fresh] [--stop] [mini args...]
 
   --dist    run built output with plain node instead of tsx on sources
   --fresh   stop the detached session server first, so it picks up your changes
   --stop    stop the detached session server and exit
 
 Mini args are passed through, for example:
-  ./mini-test.sh --continue
+  ./scripts/mini-test.sh --continue
 USAGE
       exit 0 ;;
     *) ARGS+=("$arg") ;;
@@ -43,4 +43,4 @@ if [[ "$USE_DIST" == "true" ]]; then
   exec node "$MINI_DIST" ${ARGS[@]+"${ARGS[@]}"}
 fi
 
-exec "$SCRIPT_DIR/node_modules/.bin/tsx" --tsconfig "$SCRIPT_DIR/tsconfig.json" "$MINI_SRC" ${ARGS[@]+"${ARGS[@]}"}
+exec "$REPO_ROOT/node_modules/.bin/tsx" --tsconfig "$REPO_ROOT/tsconfig.json" "$MINI_SRC" ${ARGS[@]+"${ARGS[@]}"}

@@ -52,7 +52,7 @@ Use `yupi --tui-mode regular` if you prefer terminal-owned scrollback.
 
 Yupi discovers skills in `~/.yupi/agent/skills` and the current project's `.yupi/skills`. Additional paths can be configured explicitly. Shared `.agents/skills` and `.pi` directories are not loaded automatically.
 
-Read the [usage guide](packages/coding-agent/docs/usage.md), [settings reference](packages/coding-agent/docs/settings.md), and [local setup notes](YUPI.md) for more details.
+Read the [usage guide](packages/coding-agent/docs/usage.md), [settings reference](packages/coding-agent/docs/settings.md), and [local setup notes](docs/YUPI.md) for more details.
 
 ## Packages
 
@@ -74,7 +74,7 @@ npm install --ignore-scripts # Install dependencies without lifecycle scripts
 npm run build               # Refresh model data and build all packages
 npm run build:offline       # Build using existing model data
 npm run check               # Format, lint, type-check, and validate packages
-./test.sh                   # Run tests with isolated settings and no API keys
+./scripts/test.sh          # Run tests with isolated settings and no API keys
 ```
 
 Direct external dependencies are pinned. The repository validates dependency declarations, lockfiles, and TypeScript imports as part of `npm run check`.

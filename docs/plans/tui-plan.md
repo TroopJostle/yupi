@@ -947,7 +947,7 @@ After implementation changes:
 1. Run each modified/new focused test from the relevant package root using the repository-prescribed Vitest invocation.
 2. Run `npm run check` from the repository root and fix all errors, warnings, and infos.
 3. Do not run `npm test` or the full Vitest suite.
-4. Optionally use the repository's `./test.sh` for all non-e2e tests if broader validation is warranted.
+4. Optionally use the repository's `./scripts/test.sh` for all non-e2e tests if broader validation is warranted.
 5. Manually exercise alt mode in tmux using the procedure in `AGENTS.md`:
    - long transcript
    - wheel/trackpad scrolling

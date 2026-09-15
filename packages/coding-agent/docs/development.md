@@ -14,7 +14,7 @@ npm run build
 Run from source:
 
 ```bash
-/path/to/pi/pi-test.sh
+/path/to/pi/scripts/pi-test.sh
 ```
 
 The script can be run from any directory. Pi keeps the caller's current working directory.
@@ -24,8 +24,8 @@ The script can be run from any directory. Pi keeps the caller's current working 
 The remote harness server/client integration is development-only. Run it from the repository with:
 
 ```bash
-PI_EXPERIMENTAL=1 ./pi-test.sh server
-PI_EXPERIMENTAL=1 ./pi-test.sh client
+PI_EXPERIMENTAL=1 ./scripts/pi-test.sh server
+PI_EXPERIMENTAL=1 ./scripts/pi-test.sh client
 ```
 
 `PI_SERVER_DIR` overrides the server profile and socket directory (default: `~/.pi/server`). `PI_SERVER_ID` selects the logical server ID when `--server-id` is omitted.
@@ -68,7 +68,7 @@ Never use `__dirname` directly for package assets.
 ## Testing
 
 ```bash
-./test.sh                         # Run non-LLM tests (no API keys needed)
+./scripts/test.sh                 # Run non-LLM tests (no API keys needed)
 npm test                          # Run all tests
 npm test -- test/specific.test.ts # Run specific test
 ```
