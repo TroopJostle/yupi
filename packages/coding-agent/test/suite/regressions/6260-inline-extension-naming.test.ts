@@ -2,10 +2,19 @@ import { existsSync, mkdirSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { getPackageDir } from "../../../src/config.ts";
 import { DefaultResourceLoader } from "../../../src/core/resource-loader.ts";
 import type { ExtensionAPI } from "../../../src/index.ts";
 
 const noop: (pi: ExtensionAPI) => void = () => {};
+
+// The bundled pi-subagents extension is always loaded; this suite only asserts
+// inline factory naming, so drop it from the loaded set.
+const bundledSubagentsPath = join(getPackageDir(), "vendor", "pi-subagents", "src", "index.ts");
+
+function inlineExtensions(loader: DefaultResourceLoader) {
+	return loader.getExtensions().extensions.filter((extension) => extension.path !== bundledSubagentsPath);
+}
 
 describe("inline extension naming", () => {
 	const roots: string[] = [];
@@ -46,11 +55,11 @@ describe("inline extension naming", () => {
 
 		await loader.reload();
 
-		const result = loader.getExtensions();
+		const extensions = inlineExtensions(loader);
 
-		expect(result.extensions).toHaveLength(2);
-		expect(result.extensions[0].path).toBe("<inline:1>");
-		expect(result.extensions[1].path).toBe("<inline:2>");
+		expect(extensions).toHaveLength(2);
+		expect(extensions[0].path).toBe("<inline:1>");
+		expect(extensions[1].path).toBe("<inline:2>");
 	});
 
 	it("displays named wrappers as <inline:name>", async () => {
@@ -69,11 +78,11 @@ describe("inline extension naming", () => {
 
 		await loader.reload();
 
-		const result = loader.getExtensions();
+		const extensions = inlineExtensions(loader);
 
-		expect(result.extensions).toHaveLength(2);
-		expect(result.extensions[0].path).toBe("<inline:my-provider>");
-		expect(result.extensions[1].path).toBe("<inline:my-commands>");
+		expect(extensions).toHaveLength(2);
+		expect(extensions[0].path).toBe("<inline:my-provider>");
+		expect(extensions[1].path).toBe("<inline:my-commands>");
 	});
 
 	it("preserves hidden state for named factories", async () => {
@@ -89,11 +98,11 @@ describe("inline extension naming", () => {
 
 		await loader.reload();
 
-		const result = loader.getExtensions();
+		const extensions = inlineExtensions(loader);
 
-		expect(result.extensions).toHaveLength(1);
-		expect(result.extensions[0].path).toBe("<inline:built-in>");
-		expect(result.extensions[0].hidden).toBe(true);
+		expect(extensions).toHaveLength(1);
+		expect(extensions[0].path).toBe("<inline:built-in>");
+		expect(extensions[0].hidden).toBe(true);
 	});
 
 	it("supports mixed bare and named factories", async () => {
@@ -109,11 +118,11 @@ describe("inline extension naming", () => {
 
 		await loader.reload();
 
-		const result = loader.getExtensions();
+		const extensions = inlineExtensions(loader);
 
-		expect(result.extensions).toHaveLength(3);
-		expect(result.extensions[0].path).toBe("<inline:1>");
-		expect(result.extensions[1].path).toBe("<inline:named-ext>");
-		expect(result.extensions[2].path).toBe("<inline:3>");
+		expect(extensions).toHaveLength(3);
+		expect(extensions[0].path).toBe("<inline:1>");
+		expect(extensions[1].path).toBe("<inline:named-ext>");
+		expect(extensions[2].path).toBe("<inline:3>");
 	});
 });

@@ -63,8 +63,28 @@ describe("defaultTools setting", () => {
 				.getAllTools()
 				.map((tool) => tool.name)
 				.sort(),
-		).toEqual(["bash", "edit", "find", "grep", "ls", "powershell", "read", "write"]);
-		expect(session.getActiveToolNames()).toEqual(["grep", "find"]);
+		).toEqual([
+			"Agent",
+			"SubagentWorkflow",
+			"bash",
+			"edit",
+			"find",
+			"get_subagent_result",
+			"grep",
+			"ls",
+			"powershell",
+			"read",
+			"steer_subagent",
+			"write",
+		]);
+		expect(session.getActiveToolNames()).toEqual([
+			"grep",
+			"find",
+			"Agent",
+			"SubagentWorkflow",
+			"get_subagent_result",
+			"steer_subagent",
+		]);
 		expect(session.systemPrompt).toContain("- grep:");
 		expect(session.systemPrompt).not.toContain("- read:");
 		session.dispose();
@@ -73,7 +93,16 @@ describe("defaultTools setting", () => {
 	it("can select powershell instead of bash", async () => {
 		const session = await createSession(["read", "powershell", "edit", "write"]);
 
-		expect(session.getActiveToolNames()).toEqual(["read", "powershell", "edit", "write"]);
+		expect(session.getActiveToolNames()).toEqual([
+			"read",
+			"powershell",
+			"edit",
+			"write",
+			"Agent",
+			"SubagentWorkflow",
+			"get_subagent_result",
+			"steer_subagent",
+		]);
 		expect(session.systemPrompt).toContain("- powershell: Execute PowerShell commands");
 		expect(session.systemPrompt).not.toContain("- bash:");
 		session.dispose();
@@ -116,7 +145,16 @@ describe("defaultTools setting", () => {
 		);
 		await session.bindExtensions({});
 
-		expect(session.getActiveToolNames().sort()).toEqual(["dynamic_tool", "grep", "sdk_tool", "static_tool"]);
+		expect(session.getActiveToolNames().sort()).toEqual([
+			"Agent",
+			"SubagentWorkflow",
+			"dynamic_tool",
+			"get_subagent_result",
+			"grep",
+			"sdk_tool",
+			"static_tool",
+			"steer_subagent",
+		]);
 		expect(session.getAllTools().map((tool) => tool.name)).toEqual(
 			expect.arrayContaining(["read", "dynamic_tool", "sdk_tool", "static_tool"]),
 		);
@@ -129,7 +167,13 @@ describe("defaultTools setting", () => {
 		allowlistedSession.dispose();
 
 		const excludedSession = await createSession(["read", "grep"], { excludeTools: ["read"] });
-		expect(excludedSession.getActiveToolNames()).toEqual(["grep"]);
+		expect(excludedSession.getActiveToolNames()).toEqual([
+			"grep",
+			"Agent",
+			"SubagentWorkflow",
+			"get_subagent_result",
+			"steer_subagent",
+		]);
 		excludedSession.dispose();
 
 		const toolLessSession = await createSession(["read"], { noTools: "all" });
@@ -152,8 +196,27 @@ describe("defaultTools setting", () => {
 				.getAllTools()
 				.map((tool) => tool.name)
 				.sort(),
-		).toEqual(["bash", "edit", "find", "grep", "ls", "powershell", "read", "write"]);
-		expect(session.getActiveToolNames()).toEqual(["ls"]);
+		).toEqual([
+			"Agent",
+			"SubagentWorkflow",
+			"bash",
+			"edit",
+			"find",
+			"get_subagent_result",
+			"grep",
+			"ls",
+			"powershell",
+			"read",
+			"steer_subagent",
+			"write",
+		]);
+		expect(session.getActiveToolNames()).toEqual([
+			"ls",
+			"Agent",
+			"SubagentWorkflow",
+			"get_subagent_result",
+			"steer_subagent",
+		]);
 		session.dispose();
 	});
 });

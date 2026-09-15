@@ -48,6 +48,10 @@
 - If `packages/coding-agent/npm-shrinkwrap.json` needs regen, run `node scripts/generate-coding-agent-shrinkwrap.mjs` (verify with `--check` or `npm run check`). New deps with lifecycle scripts require review and an explicit allowlist entry in that script; never add one silently.
 - Pre-commit blocks lockfile commits unless `PI_ALLOW_LOCKFILE_CHANGE=1`. Don't bypass unless the user wants the lockfile change committed.
 
+## External Code Integration
+
+For integrating third-party code into Yupi — vendoring a project, bundling an extension or subagent, taking a dependency from a specific upstream repo, or porting a feature — load and follow [.pi/skills/integrate-external-repo.md](.pi/skills/integrate-external-repo.md). Core rules: audit the upstream repo at a pinned revision before anything else, fork it with `gh repo fork`, and integrate only the fork. Never wire upstream URLs into the harness or its dependencies.
+
 ## Git
 
 Multiple pi sessions may be running in this cwd at the same time, each modifying different files. Git operations that touch unstaged, staged, or untracked files outside your own changes will stomp on other sessions' work. Follow these rules:

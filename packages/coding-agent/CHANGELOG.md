@@ -4,6 +4,7 @@
 
 ### Added
 
+- Added the bundled subagents extension (`Agent` tool, background agents, scheduling, structured output, `/agents` command), vendored from [tintinweb/pi-subagents](https://github.com/tintinweb/pi-subagents) and shipped as a package asset. It loads by default and can be disabled with `--no-extensions`. Explicit model selections (agent files or per-call `model` overrides) fail with an error instead of silently substituting another model or provider; `model: inherit` keeps the parent model.
 - Added `ctx.modelRegistry.stream()` and `streamSimple()` for extension model calls through configured providers with resolved authentication ([#8964](https://github.com/earendil-works/pi/issues/8964)).
 - Added per-model `reserveTokens` and `keepRecentTokens` settings through `compaction.modelOverrides`, with ordinary compaction settings as fallback ([#8133](https://github.com/earendil-works/pi-mono/issues/8133)).
 
