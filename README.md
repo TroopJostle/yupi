@@ -1,3 +1,282 @@
+# Pidor
+
+Pidor is a Pi source fork with its own `pidor` command and `.pidor`
+configuration directory. The upstream project documentation follows the local
+setup notes below. See [PIDOR.md](PIDOR.md) for fork and build notes.
+
+## Local launch defaults
+
+On this installation, start Pidor with tools and the minimal prompt setup using:
+
+```sh
+pidor
+```
+
+These defaults were configured on September 13, 2026, after the same setup in
+`./pi-debug` produced the desired behavior. That first launcher ran stock Pi;
+`pidor` runs this fork. The purpose is to reduce automatically added instructions
+while keeping tools available and recording what the client sends and executes.
+This does not establish why the model behaved differently with tools enabled,
+and it does not guarantee the same responses as `--no-tools`.
+
+The defaults live in a **local shell launcher and local settings**, not in new
+fork CLI defaults. Cloning or building this repository alone does not install
+this configuration. Stock `pi` and its `~/.pi/agent` configuration are separate.
+
+### Where the configuration lives
+
+| Location | Purpose |
+| --- | --- |
+| `~/.local/bin/pidor` → `~/.local/share/pidor/pidor-no-context` | Command symlink and active launcher. Edit the launcher to change startup flags. |
+| `~/.local/share/pidor/source/` | This fork checkout. The launcher runs `packages/coding-agent/dist/bundle/cli.js` with Node. |
+| `~/.pidor/agent/` | Global settings, models, credentials, and sessions. `settings.json` contains `defaultTools`. `PIDOR_CODING_AGENT_DIR` can override the agent directory. |
+| `.pidor/` in a project | Project configuration, subject to the fork's project trust rules. |
+| `~/.local/share/pidor/debug-trace.mjs` and `~/.pidor/agent/debug/pidor/` | Explicitly loaded observer and its default log directory. `PI_DEBUG_LOG_DIR` overrides the log directory independently of the agent directory. |
+
+The active launcher's execution block is:
+
+```sh
+exec node "$PIDOR_INSTALL_DIR/source/packages/coding-agent/dist/bundle/cli.js" \
+  --system-prompt " " \
+  --no-context-files \
+  --no-extensions \
+  --no-skills \
+  --no-prompt-templates \
+  --extension "$PIDOR_INSTALL_DIR/debug-trace.mjs" \
+  "$@"
+```
+
+The launcher defines `PIDOR_INSTALL_DIR="$HOME/.local/share/pidor"` above this
+block. Keep `"$@"` last: it forwards your arguments, letting later scalar options
+such as `--system-prompt` override the launcher's value.
+
+| Default | Why it is present |
+| --- | --- |
+| `--system-prompt " "` | Supplies one literal space, bypassing the built-in coding instructions. In this version, `""` is treated as absent and falls back to the built-in prompt. |
+| `--no-context-files` | Stops automatic `AGENTS.md` and `CLAUDE.md` loading. |
+| `--no-extensions` plus the explicit trace extension | Stops extension discovery while keeping the observer loaded. Explicit `--extension` paths still work. |
+| `--no-skills` | Stops automatic skill loading, including skills configured in settings. Explicit `--skill` paths still work. |
+| `--no-prompt-templates` | Stops automatic prompt template loading. Explicit `--prompt-template` paths still work. |
+
+There is no `--no-tools` in the launcher. The configured `defaultTools` are
+`read`, `bash`, `edit`, `write`, `grep`, `find`, and `ls`. Provider and model
+selection still comes from normal Pidor settings or your command-line options.
+
+### What “minimal prompt” means
+
+The one-space value is **not a completely empty provider request**. The client
+still appends the working directory and sends tool descriptions and argument
+schemas separately. Enabling skills adds skill guidance and an index to the
+system prompt when a tool that can read skill files is available.
+
+`APPEND_SYSTEM.md` is discovered separately from `AGENTS.md` and `CLAUDE.md`.
+The current flags do not disable it: a trusted project's `.pidor/APPEND_SYSTEM.md`
+can take precedence over `~/.pidor/agent/APPEND_SYSTEM.md`. To override that
+discovery for one run with a space:
+
+```sh
+pidor --append-system-prompt " "
+```
+
+For that behavior on every launch, add `--append-system-prompt " " \` before
+`"$@"` in the launcher. The explicit `--system-prompt` already overrides
+automatic `SYSTEM.md` selection.
+
+Disabling automatic context loading does not prevent a tool from reading an
+instruction file when requested. Those tool calls appear in the trace. These
+flags control client configuration; they do not remove provider-side
+instructions or model training, and the trace cannot reveal either.
+
+### Enable selected skills for one run
+
+Pass a skill file, a directory of skills, or repeat the option:
+
+```sh
+pidor --skill "$HOME/.pidor/agent/skills/my-skill/SKILL.md"
+pidor --skill /path/to/chosen-skills
+pidor --skill /path/to/first/SKILL.md --skill /path/to/second/SKILL.md
+```
+
+Replace the example paths with existing skills. These options work **without
+removing `--no-skills`**. A directory can include multiple skills; use individual
+`SKILL.md` paths when you want only particular ones. Each skill needs valid YAML
+frontmatter, including its name and description; see the [skill format and
+loading documentation](packages/coding-agent/docs/skills.md).
+
+Loaded skills become available to the model. Their names and descriptions enter
+the skill index; their full instructions are loaded on demand. To invoke a
+loaded skill explicitly, use `/skill:my-skill` in Pidor, using its frontmatter
+name. Skill slash commands are enabled by default via `enableSkillCommands`.
+
+### Make selected skills permanent
+
+1. Open `~/.local/share/pidor/pidor-no-context` in your editor.
+2. Keep `--no-skills` and add a `--skill` line for each chosen file before `"$@"`.
+3. Save the launcher and start a new `pidor` process.
+
+For example, the execution block with one selected skill becomes:
+
+```sh
+exec node "$PIDOR_INSTALL_DIR/source/packages/coding-agent/dist/bundle/cli.js" \
+  --system-prompt " " \
+  --no-context-files \
+  --no-extensions \
+  --no-skills \
+  --no-prompt-templates \
+  --extension "$PIDOR_INSTALL_DIR/debug-trace.mjs" \
+  --skill "$HOME/.pidor/agent/skills/my-skill/SKILL.md" \
+  "$@"
+```
+
+Keep a trailing `\` on each continued line, with no characters after it. Check
+the shell syntax after editing:
+
+```sh
+sh -n "$HOME/.local/share/pidor/pidor-no-context"
+```
+
+### Restore automatic skill discovery
+
+Remove the `--no-skills \` line from the launcher and restart Pidor. There is
+no opposite `--skills` flag that cancels it for one run.
+
+Normal discovery can then load global skills from `~/.pidor/agent/skills`,
+project skills from `.pidor/skills`, and configured/package skill paths.
+Project sources remain subject to project trust rules. Restoring discovery can
+therefore load more than the skill you intended; use explicit paths above for a
+selected set.
+
+This fork also disables automatic discovery of the shared `~/.agents/skills`
+and project `.agents/skills` directories in its source. Removing `--no-skills`
+does not restore those shared directories. To use their skills, pass explicit
+`--skill` paths or add their paths to settings after enabling discovery. The
+linked skill documentation describes upstream Pi; use the Pidor paths here for
+this installation.
+
+With discovery enabled, you can also merge a `skills` entry into
+`~/.pidor/agent/settings.json` or project settings:
+
+```json
+{
+  "skills": ["/absolute/path/to/chosen-skills"]
+}
+```
+
+This is a settings fragment: preserve the file's other keys. Adding it while the
+launcher still includes `--no-skills` will not enable those configured skills.
+
+### Change the prompt, tools, or other defaults
+
+Override the prompt or tools for one run:
+
+```sh
+pidor --system-prompt "Your system instructions here."
+pidor --system-prompt /absolute/path/to/system-prompt.md
+pidor --tools read,grep,find,ls
+pidor --no-tools
+```
+
+To change the permanent tool set, edit only `defaultTools` in
+`~/.pidor/agent/settings.json`, preserving the other settings. Its current value
+is:
+
+```json
+{
+  "defaultTools": ["read", "bash", "edit", "write", "grep", "find", "ls"]
+}
+```
+
+To restore other automatic behavior, edit the corresponding launcher line:
+
+| Desired behavior | Launcher change |
+| --- | --- |
+| Use normal `SYSTEM.md` selection or the built-in coding prompt | Remove `--system-prompt " " \`. For just the built-in prompt on one run, use `pidor --system-prompt ""`. |
+| Load `AGENTS.md` / `CLAUDE.md` automatically | Remove `--no-context-files \`. |
+| Discover extensions | Remove `--no-extensions \`. To add only one, keep it and use `pidor --extension /path/to/extension.mjs`. |
+| Discover skills | Remove `--no-skills \`. |
+| Discover prompt templates | Remove `--no-prompt-templates \`. To add only one, keep it and use `pidor --prompt-template /path/to/template.md`. |
+
+Restart Pidor after launcher changes; `/reload` does not replace startup flags.
+These edits require no rebuild. To bypass the local launcher for a single run,
+use the fork CLI directly:
+
+```sh
+node "$HOME/.local/share/pidor/source/packages/coding-agent/dist/bundle/cli.js"
+```
+
+That uses normal fork discovery and the same Pidor settings, without this
+launcher's flags or explicitly loaded trace observer.
+
+### Trace activity and turn logging off
+
+In a second terminal, follow the latest run:
+
+```sh
+pidor --follow
+```
+
+Inside Pidor, `/trace` displays the run directory. Ctrl+O is the default shortcut
+to expand tool output. Each run records:
+
+- `trace.log`: activity, tool calls, arguments, and completion.
+- `events.jsonl`: client system prompt, context metadata, messages, and tool results.
+- `request-NNNN.json`: provider request bodies at the `before_provider_request` hook.
+
+The observer does not alter prompts, requests, tool arguments, or results.
+Additional extensions can change requests after an earlier observer runs.
+The trace records shell commands and their results, not every file opened by
+subprocesses; it cannot inspect server-side prompt transformations.
+
+Logs contain conversation text and returned file contents. New log directories
+use permissions `0700` and files use `0600`; HTTP authentication headers are not
+recorded. Use `PI_DEBUG_LOG_DIR=/path/to/logs pidor` to choose another location,
+and use the same variable with `pidor --follow`.
+
+To stop recording new traces, remove the explicit
+`--extension "$PIDOR_INSTALL_DIR/debug-trace.mjs" \` line and restart Pidor.
+Adding `--no-extensions` again does not disable an explicitly loaded extension.
+Removing the observer also removes `/trace`; existing logs remain on disk, and
+`pidor --follow` can still point at the last recorded run.
+
+### Previous configuration and verification
+
+The pre-change files were saved alongside their originals:
+
+```text
+~/.local/share/pidor/pidor-no-context.before-debug-defaults-20260913T190651Z.bak
+~/.pidor/agent/settings.json.before-debug-defaults-20260913T190651Z.bak
+```
+
+The earlier launcher supplied only `--no-context-files`. To return to that
+launch behavior, restore that launcher's backup. Restore the settings backup
+only if you also want its entire old configuration; after later settings edits,
+prefer changing just `defaultTools` to avoid losing unrelated changes.
+
+The original `./pi-debug`, observer source, and local smoke test live in
+`~/Documents/projects/random/opensource/pidor/`. The installed observer is a
+copy, so edits to the workspace copy do not automatically update Pidor's copy.
+The old installation's `runtime/` and `pidor.mjs` are superseded; the active
+launcher is `pidor-no-context`.
+
+Verification used synthetic files and isolated settings. It confirmed selected
+skill files/directories and repeated `--skill` flags work with discovery off,
+removing `--no-skills` restores discovery, and prompt/append overrides work.
+Those checks stopped before any provider request. The local smoke test also
+checks real `read`/`bash` execution against a local mock provider, unchanged
+request bodies with tracing enabled, private log permissions, and `--no-tools`:
+
+```sh
+python3 "$HOME/Documents/projects/random/opensource/pidor/tests/trace-smoke.py" pidor
+```
+
+The relevant implementation is in [CLI argument parsing](packages/coding-agent/src/cli/args.ts),
+[resource loading](packages/coding-agent/src/core/resource-loader.ts), and
+[system prompt construction](packages/coding-agent/src/core/system-prompt.ts).
+Check these again when upgrading the fork, since flag and loading behavior can
+change.
+
+---
+
 <p align="center">
   <a href="https://pi.dev">
     <img alt="pi logo" src="https://pi.dev/logo-auto.svg" width="128">
