@@ -1,0 +1,25 @@
+#!/bin/sh
+set -eu
+
+PIDOR_INSTALL_DIR="$HOME/.local/share/pidor"
+PI_DEBUG_LOG_DIR="${PI_DEBUG_LOG_DIR:-$HOME/.pidor/agent/debug/pidor}"
+PI_DEBUG_LAUNCHER="pidor"
+export PI_DEBUG_LOG_DIR PI_DEBUG_LAUNCHER
+
+if [ "${1:-}" = "--follow" ]; then
+  if [ ! -f "$PI_DEBUG_LOG_DIR/latest" ]; then
+    echo "No trace yet. Start pidor first." >&2
+    exit 1
+  fi
+  IFS= read -r trace_file < "$PI_DEBUG_LOG_DIR/latest"
+  exec tail -n 40 -f "$trace_file"
+fi
+
+exec node "$PIDOR_INSTALL_DIR/source/packages/coding-agent/dist/bundle/cli.js" \
+  --system-prompt " " \
+  --no-context-files \
+  --no-extensions \
+  --no-skills \
+  --no-prompt-templates \
+  --extension "$PIDOR_INSTALL_DIR/debug-trace.mjs" \
+  "$@"

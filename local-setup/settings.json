@@ -1,0 +1,17 @@
+{
+  "defaultProvider": "gonka",
+  "defaultModel": "deepseek-ai/DeepSeek-V4-Flash-0731",
+  "defaultThinkingLevel": "high",
+  "theme": "dark",
+  "packages": [],
+  "skills": [],
+  "defaultTools": [
+    "read",
+    "bash",
+    "edit",
+    "write",
+    "grep",
+    "find",
+    "ls"
+  ]
+}

@@ -1,0 +1,72 @@
+{
+  "providers": {
+    "gonka": {
+      "baseUrl": "https://api.proxy.gonka.gg/v1",
+      "api": "openai-completions",
+      "compat": {
+        "supportsDeveloperRole": false,
+        "supportsReasoningEffort": false,
+        "maxTokensField": "max_tokens"
+      },
+      "models": [
+        {
+          "id": "MiniMaxAI/MiniMax-M2.7",
+          "name": "MiniMax M2.7 via Gonka",
+          "reasoning": true,
+          "input": ["text"],
+          "contextWindow": 180000,
+          "maxTokens": 16384
+        },
+        {
+          "id": "moonshotai/Kimi-K2.6",
+          "name": "Kimi K2.6 via Gonka",
+          "reasoning": true,
+          "input": ["text"],
+          "contextWindow": 240000,
+          "maxTokens": 16384
+        },
+        {
+          "id": "deepseek-ai/DeepSeek-V4-Flash-0731",
+          "name": "DeepSeek V4 Flash via Gonka",
+          "reasoning": true,
+          "input": ["text"],
+          "contextWindow": 400000,
+          "maxTokens": 16384
+        }
+      ]
+    },
+    "openrouter": {
+      "baseUrl": "https://openrouter.ai/api/v1",
+      "api": "openai-completions",
+      "models": [
+        {
+          "id": "stealth/ox-alpha",
+          "name": "Ox Alpha via OpenRouter",
+          "reasoning": true,
+          "thinkingLevelMap": {
+            "off": null,
+            "minimal": null,
+            "low": "low",
+            "medium": null,
+            "high": "high",
+            "xhigh": null,
+            "max": "max"
+          },
+          "input": ["text", "image"],
+          "contextWindow": 1048576,
+          "maxTokens": 131072,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0
+          },
+          "compat": {
+            "thinkingFormat": "openrouter",
+            "maxTokensField": "max_tokens"
+          }
+        }
+      ]
+    }
+  }
+}

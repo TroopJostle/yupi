@@ -20,8 +20,33 @@ This does not establish why the model behaved differently with tools enabled,
 and it does not guarantee the same responses as `--no-tools`.
 
 The defaults live in a **local shell launcher and local settings**, not in new
-fork CLI defaults. Cloning or building this repository alone does not install
-this configuration. Stock `pi` and its `~/.pi/agent` configuration are separate.
+fork CLI defaults: a plain build of this repository runs with normal discovery.
+The [local-setup](local-setup/) directory reproduces the full local
+installation, and the launcher itself remains plain configuration that can be
+edited or removed without rebuilding. Stock `pi` and its `~/.pi/agent`
+configuration are separate.
+
+### Reproduce the local setup
+
+`local-setup/` contains the launcher (`pidor-no-context`), the trace observer
+(`debug-trace.mjs`), the tool/model settings (`settings.json`), and the provider
+definitions (`models.json`, no credentials). To install on a fresh machine:
+
+```sh
+git clone --branch pidor https://github.com/TroopJostle/yupi.git
+cd yupi/local-setup
+./install.sh
+```
+
+`install.sh` clones and builds the fork into `~/.local/share/pidor/source` (or
+links an existing checkout via `--source /path/to/checkout`), installs the
+launcher and observer, symlinks `~/.local/bin/pidor`, and writes
+`~/.pidor/agent/settings.json` and `models.json` when absent. Re-running keeps
+existing files; pass `--force` to replace them.
+
+Credentials (`auth.json`), sessions, and trace logs are deliberately **not**
+in the repository. Add API keys by starting Pidor and using `/login`, or copy
+`~/.pidor/agent/auth.json` privately from the previous machine; never commit it.
 
 ### Where the configuration lives
 
