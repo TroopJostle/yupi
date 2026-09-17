@@ -5,6 +5,7 @@
   "theme": "dark",
   "packages": [],
   "skills": [],
+  "lastChangelogVersion": "0.85.1",
   "defaultTools": [
     "read",
     "bash",
